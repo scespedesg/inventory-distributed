@@ -1,6 +1,6 @@
 name: Protect Branches
 on:
-  workflow_dispatch: {}   # lo ejecutas manualmente la primera vez
+  workflow_dispatch: {}   # ejecútalo manualmente la primera vez
 
 jobs:
   protect:
@@ -9,52 +9,48 @@ jobs:
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
 
-      - name: Ensure branches & protections
+      - name: Ensure branches & apply protections
         env:
-          GH_OWNER: scespedesg
-          GH_REPO: inventory-distributed
-          GH_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+          OWNER: scespedesg
+          REPO: inventory-distributed
+          TOKEN: ${{ secrets.ADMIN_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
 
           api() {
-            local method="$1" path="$2"
-            shift 2
-            curl -sSf -X "$method" "https://api.github.com/repos/$GH_OWNER/$GH_REPO$path" \
+            curl -sSf -X "$1" "https://api.github.com/repos/$OWNER/$REPO$2" \
               -H "Accept: application/vnd.github+json" \
-              -H "Authorization: Bearer $GH_TOKEN" \
-              "$@"
+              -H "Authorization: Bearer $TOKEN" \
+              ${3:+-d "$3"}
           }
 
-          # 1) SHA de main
+          echo "Getting main SHA..."
           MAIN_SHA=$(api GET "/git/ref/heads/main" | jq -r '.object.sha')
 
-          # 2) Crear branches si no existen
-          ensure_branch() {
+          create_branch_if_missing() {
             local BR="$1"
             if api GET "/git/ref/heads/$BR" >/dev/null 2>&1; then
-              echo "Branch '$BR' ya existe"
+              echo "Branch '$BR' already exists"
             else
-              echo "Creando branch '$BR' desde main..."
-              api POST "/git/refs" -d @- <<JSON
-              { "ref": "refs/heads/$BR", "sha": "$MAIN_SHA" }
-JSON
+              echo "Creating branch '$BR' from main..."
+              PAYLOAD="{\"ref\":\"refs/heads/$BR\",\"sha\":\"$MAIN_SHA\"}"
+              api POST "/git/refs" "$PAYLOAD" >/dev/null
             fi
           }
 
-          ensure_branch integration
-          ensure_branch laboratory
+          create_branch_if_missing integration
+          create_branch_if_missing laboratory
 
-          # 3) Proteger branches (PR obligatorio + checks + sin push directo)
           protect_branch() {
             local BR="$1"
-            echo "Aplicando protección a '$BR'..."
-            api PUT "/branches/$BR/protection" -d @- <<'JSON'
-            {
+            echo "Protecting '$BR'..."
+            # Requiere PR + 1 review + status check 'build'
+            # (restrictions: null -> no se configura lista de quienes pueden hacer push)
+            PAYLOAD='{
               "required_status_checks": {
                 "strict": true,
-                "checks": [ { "context": "build" } ]
+                "contexts": ["build"]
               },
               "enforce_admins": true,
               "required_pull_request_reviews": {
@@ -63,17 +59,16 @@ JSON
                 "require_code_owner_reviews": false,
                 "require_last_push_approval": false
               },
-              "restrictions": { "users": [], "teams": [], "apps": [] },
+              "restrictions": null,
               "allow_force_pushes": false,
               "allow_deletions": false,
-              "required_linear_history": false,
-              "required_conversation_resolution": true
-            }
-JSON
+              "required_linear_history": false
+            }'
+            api PUT "/branches/$BR/protection" "$PAYLOAD" >/dev/null
           }
 
           protect_branch main
           protect_branch laboratory
           protect_branch integration
 
-          echo "Protecciones aplicadas."
+          echo "✅ Protections applied."
