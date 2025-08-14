@@ -1,0 +1,74 @@
+name: Protect Branches
+on:
+  workflow_dispatch: {}   # ejecútalo manualmente la primera vez
+
+jobs:
+  protect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Ensure branches & apply protections
+        env:
+          OWNER: scespedesg
+          REPO: inventory-distributed
+          TOKEN: ${{ secrets.ADMIN_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          api() {
+            curl -sSf -X "$1" "https://api.github.com/repos/$OWNER/$REPO$2" \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer $TOKEN" \
+              ${3:+-d "$3"}
+          }
+
+          echo "Getting main SHA..."
+          MAIN_SHA=$(api GET "/git/ref/heads/main" | jq -r '.object.sha')
+
+          create_branch_if_missing() {
+            local BR="$1"
+            if api GET "/git/ref/heads/$BR" >/dev/null 2>&1; then
+              echo "Branch '$BR' already exists"
+            else
+              echo "Creating branch '$BR' from main..."
+              PAYLOAD="{\"ref\":\"refs/heads/$BR\",\"sha\":\"$MAIN_SHA\"}"
+              api POST "/git/refs" "$PAYLOAD" >/dev/null
+            fi
+          }
+
+          create_branch_if_missing integration
+          create_branch_if_missing laboratory
+
+          protect_branch() {
+            local BR="$1"
+            echo "Protecting '$BR'..."
+            # Requiere PR + 1 review + status check 'build'
+            # (restrictions: null -> no se configura lista de quienes pueden hacer push)
+            PAYLOAD='{
+              "required_status_checks": {
+                "strict": true,
+                "contexts": ["build"]
+              },
+              "enforce_admins": true,
+              "required_pull_request_reviews": {
+                "required_approving_review_count": 1,
+                "dismiss_stale_reviews": true,
+                "require_code_owner_reviews": false,
+                "require_last_push_approval": false
+              },
+              "restrictions": null,
+              "allow_force_pushes": false,
+              "allow_deletions": false,
+              "required_linear_history": false
+            }'
+            api PUT "/branches/$BR/protection" "$PAYLOAD" >/dev/null
+          }
+
+          protect_branch main
+          protect_branch laboratory
+          protect_branch integration
+
+          echo "✅ Protections applied."
