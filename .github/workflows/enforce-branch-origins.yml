@@ -1,0 +1,33 @@
+name: Enforce PR branch origins
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check base/head rules
+        shell: bash
+        run: |
+          BASE="${GITHUB_BASE_REF}"
+          HEAD="${GITHUB_HEAD_REF}"
+
+          fail() { echo "::error::$1"; exit 1; }
+
+          case "$BASE" in
+            main)
+              [ "$HEAD" = "laboratory" ] || fail "PRs hacia 'main' solo desde 'laboratory' (head=$HEAD)"
+              ;;
+            laboratory)
+              [ "$HEAD" = "integration" ] || fail "PRs hacia 'laboratory' solo desde 'integration' (head=$HEAD)"
+              ;;
+            integration)
+              if [[ ! "$HEAD" =~ ^(feature|bugfix|hotfix|chore)/.+$ ]]; then
+                fail "PRs hacia 'integration' solo desde feature/*, bugfix/*, hotfix/* o chore/* (head=$HEAD)"
+              fi
+              ;;
+            *)
+              echo "Sin reglas para base=$BASE"
+              ;;
+          esac
