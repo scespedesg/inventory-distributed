@@ -54,7 +54,7 @@ jobs:
               },
               "enforce_admins": true,
               "required_pull_request_reviews": {
-                "required_approving_review_count": 1,
+                "required_approving_review_count": 0,
                 "dismiss_stale_reviews": true,
                 "require_code_owner_reviews": false,
                 "require_last_push_approval": false
@@ -72,3 +72,14 @@ jobs:
           protect_branch integration
 
           echo "✅ Protections applied."
+
+      - name: Enable auto-delete merged branches (repo setting)
+        env:
+          TOKEN: ${{ secrets.ADMIN_TOKEN }}
+        run: |
+          curl -sSf -X PATCH \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $TOKEN" \
+            https://api.github.com/repos/scespedesg/inventory-distributed \
+            -d '{"delete_branch_on_merge": true, "allow_auto_merge": true}'
+
