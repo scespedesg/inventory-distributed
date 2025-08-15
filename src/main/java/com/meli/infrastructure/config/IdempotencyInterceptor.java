@@ -1,7 +1,8 @@
 package com.meli.infrastructure.config;
 
 import com.meli.infrastructure.repository.IdempotencyKeyEntity;
-import io.smallrye.common.annotation.Blocking;
+import io.smallrye.mutiny.Uni;
+import io.smallrye.mutiny.infrastructure.Infrastructure;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -20,20 +21,22 @@ public class IdempotencyInterceptor {
     EntityManager em;
 
     @ServerRequestFilter
-    @Blocking
     @Transactional
-    public void filter(ContainerRequestContext ctx) {
+    public Uni<Void> filter(ContainerRequestContext ctx) {
         if (!"POST".equals(ctx.getMethod())) {
-            return;
+            return Uni.createFrom().voidItem();
         }
         String key = ctx.getHeaderString("Idempotency-Key");
         if (key == null) {
-            return;
+            return Uni.createFrom().voidItem();
         }
-        if (em.find(IdempotencyKeyEntity.class, key) != null) {
-            ctx.abortWith(Response.status(409).entity("Duplicate request").build());
-        } else {
-            em.persist(new IdempotencyKeyEntity(key));
-        }
+        return Uni.createFrom().item(() -> {
+            if (em.find(IdempotencyKeyEntity.class, key) != null) {
+                ctx.abortWith(Response.status(409).entity("Duplicate request").build());
+            } else {
+                em.persist(new IdempotencyKeyEntity(key));
+            }
+            return null;
+        }).runSubscriptionOn(Infrastructure.getDefaultExecutor());
     }
 }
