@@ -2,7 +2,7 @@ package com.meli.infrastructure.repository;
 
 import com.meli.domain.model.*;
 import com.meli.domain.repository.StockRepository;
-import io.quarkus.hibernate.reactive.panache.common.runtime.Panache;
+import io.quarkus.hibernate.reactive.panache.Panache;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.hibernate.reactive.mutiny.Mutiny;
