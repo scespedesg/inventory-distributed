@@ -3,6 +3,7 @@
 ## Vista general
 
 ```mermaid
+%%{init: {'themeVariables': { 'background': '#fff'}}}%%
 flowchart LR
   %% Canales
   A1["Web/Mobile\neCommerce"]:::client
@@ -123,6 +124,7 @@ flowchart LR
 ## Procesamiento de comandos e idempotencia
 
 ```mermaid
+%%{init: {'themeVariables': { 'background': '#fff'}}}%%
 flowchart TB
   CLI["Cliente\n(Idempotency-Key)"]:::client
   CTRL["Command Controller"]:::svc
@@ -182,6 +184,7 @@ flowchart TB
 ## Proyección y consultas
 
 ```mermaid
+%%{init: {'themeVariables': { 'background': '#fff'}}}%%
 flowchart TB
   BUS["Event Bus\n(partición por skuId)"]:::bus
   CONS["Projector\nidempotente"]:::svc
