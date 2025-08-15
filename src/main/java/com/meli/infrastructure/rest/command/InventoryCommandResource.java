@@ -9,7 +9,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import org.hibernate.reactive.mutiny.Mutiny;
+import io.quarkus.hibernate.reactive.panache.Panache;
 import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
 
 @Path("/v1/inventory")
@@ -23,18 +23,17 @@ public class InventoryCommandResource {
   @Inject ReleaseStockUC releaseUC;
   @Inject AdjustStockUC  adjustUC;
 
-  @Inject Mutiny.Session session;
-
   @POST @Path("/reserve")
   @WithTransaction
   public Uni<Response> reserve(@HeaderParam("Idempotency-Key") String key, ReserveRequest req) {
     ensureKey(key);
     String hash = IdempotencyServiceReactive.hash("POST", "/v1/inventory/reserve", req);
 
-    return idem.execute(key, hash,
-      () -> reserveUC.reserve(new SkuId(req.skuId()), req.quantity())
-                     .map(this::toCreatedResponse), // 201 + body
-      session);
+    return Panache.getSession().flatMap(session ->
+      idem.execute(key, hash,
+        () -> reserveUC.reserve(new SkuId(req.skuId()), req.quantity())
+                       .map(this::toCreatedResponse), // 201 + body
+        session));
   }
 
   @POST @Path("/confirm")
@@ -43,10 +42,11 @@ public class InventoryCommandResource {
     ensureKey(key);
     String hash = IdempotencyServiceReactive.hash("POST", "/v1/inventory/confirm", req);
 
-    return idem.execute(key, hash,
-      () -> confirmUC.confirm(new SkuId(req.skuId()), req.quantity())
-                     .replaceWith(Response.noContent().build()), // 204
-      session);
+    return Panache.getSession().flatMap(session ->
+      idem.execute(key, hash,
+        () -> confirmUC.confirm(new SkuId(req.skuId()), req.quantity())
+                       .replaceWith(Response.noContent().build()), // 204
+        session));
   }
 
   @POST @Path("/release")
@@ -55,10 +55,11 @@ public class InventoryCommandResource {
     ensureKey(key);
     String hash = IdempotencyServiceReactive.hash("POST", "/v1/inventory/release", req);
 
-    return idem.execute(key, hash,
-      () -> releaseUC.release(new SkuId(req.skuId()), req.quantity())
-                     .replaceWith(Response.noContent().build()),
-      session);
+    return Panache.getSession().flatMap(session ->
+      idem.execute(key, hash,
+        () -> releaseUC.release(new SkuId(req.skuId()), req.quantity())
+                       .replaceWith(Response.noContent().build()),
+        session));
   }
 
   @POST @Path("/adjust")
@@ -67,10 +68,11 @@ public class InventoryCommandResource {
     ensureKey(key);
     String hash = IdempotencyServiceReactive.hash("POST", "/v1/inventory/adjust", req);
 
-    return idem.execute(key, hash,
-      () -> adjustUC.adjust(new SkuId(req.skuId()), req.delta())
-                    .map(agg -> Response.ok(toResponse(agg)).build()),
-      session);
+    return Panache.getSession().flatMap(session ->
+      idem.execute(key, hash,
+        () -> adjustUC.adjust(new SkuId(req.skuId()), req.delta())
+                      .map(agg -> Response.ok(toResponse(agg)).build()),
+        session));
   }
 
   private static void ensureKey(String key) {
