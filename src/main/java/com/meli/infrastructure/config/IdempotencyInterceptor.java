@@ -1,15 +1,14 @@
 package com.meli.infrastructure.config;
 
 import com.meli.infrastructure.repository.IdempotencyKeyEntity;
+import io.quarkus.vertx.http.runtime.filters.RouteFilter;
 import io.smallrye.common.annotation.Blocking;
+import io.vertx.core.http.HttpMethod;
+import io.vertx.ext.web.RoutingContext;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
-import jakarta.ws.rs.Priorities;
-import jakarta.ws.rs.container.ContainerRequestContext;
-import jakarta.ws.rs.core.Response;
-import org.jboss.resteasy.reactive.server.ServerRequestFilter;
 
 /**
  * Interceptor that ensures POST commands are processed once per Idempotency-Key header.
@@ -20,19 +19,19 @@ public class IdempotencyInterceptor {
     @Inject
     EntityManager em;
 
-    @ServerRequestFilter(preMatching = true, priority = Priorities.AUTHENTICATION)
+    @RouteFilter(100)
     @Blocking
     @Transactional
-    public void filter(ContainerRequestContext ctx) {
-        if (!"POST".equals(ctx.getMethod())) {
+    void filter(RoutingContext rc) {
+        if (rc.request().method() != HttpMethod.POST) {
             return;
         }
-        String key = ctx.getHeaderString("Idempotency-Key");
+        String key = rc.request().getHeader("Idempotency-Key");
         if (key == null) {
             return;
         }
         if (em.find(IdempotencyKeyEntity.class, key) != null) {
-            ctx.abortWith(Response.status(Response.Status.CONFLICT).entity("Duplicate request").build());
+            rc.response().setStatusCode(409).end("Duplicate request");
         } else {
             em.persist(new IdempotencyKeyEntity(key));
         }
