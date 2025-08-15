@@ -1,6 +1,7 @@
 package com.meli.infrastructure.config;
 
 import com.meli.infrastructure.repository.IdempotencyKeyEntity;
+import io.smallrye.common.annotation.Blocking;
 import io.smallrye.mutiny.Uni;
 import io.smallrye.mutiny.infrastructure.Infrastructure;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -21,6 +22,7 @@ public class IdempotencyInterceptor {
     EntityManager em;
 
     @ServerRequestFilter
+    @Blocking
     @Transactional
     public Uni<Void> filter(ContainerRequestContext ctx) {
         if (!"POST".equals(ctx.getMethod())) {
@@ -30,7 +32,7 @@ public class IdempotencyInterceptor {
         if (key == null) {
             return Uni.createFrom().voidItem();
         }
-        return Uni.createFrom().item(() -> {
+        return Uni.createFrom().<Void>item(() -> {
             if (em.find(IdempotencyKeyEntity.class, key) != null) {
                 ctx.abortWith(Response.status(409).entity("Duplicate request").build());
             } else {
