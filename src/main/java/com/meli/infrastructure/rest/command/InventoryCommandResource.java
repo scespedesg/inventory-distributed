@@ -23,9 +23,11 @@ public class InventoryCommandResource {
   @Inject ReleaseStockUC releaseUC;
   @Inject AdjustStockUC  adjustUC;
 
+  @Inject Mutiny.Session session;
+
   @POST @Path("/reserve")
   @WithTransaction
-  public Uni<Response> reserve(@HeaderParam("Idempotency-Key") String key, ReserveRequest req, Mutiny.Session session) {
+  public Uni<Response> reserve(@HeaderParam("Idempotency-Key") String key, ReserveRequest req) {
     ensureKey(key);
     String hash = IdempotencyServiceReactive.hash("POST", "/v1/inventory/reserve", req);
 
@@ -37,7 +39,7 @@ public class InventoryCommandResource {
 
   @POST @Path("/confirm")
   @WithTransaction
-  public Uni<Response> confirm(@HeaderParam("Idempotency-Key") String key, ConfirmRequest req, Mutiny.Session session) {
+  public Uni<Response> confirm(@HeaderParam("Idempotency-Key") String key, ConfirmRequest req) {
     ensureKey(key);
     String hash = IdempotencyServiceReactive.hash("POST", "/v1/inventory/confirm", req);
 
@@ -49,7 +51,7 @@ public class InventoryCommandResource {
 
   @POST @Path("/release")
   @WithTransaction
-  public Uni<Response> release(@HeaderParam("Idempotency-Key") String key, ReleaseRequest req, Mutiny.Session session) {
+  public Uni<Response> release(@HeaderParam("Idempotency-Key") String key, ReleaseRequest req) {
     ensureKey(key);
     String hash = IdempotencyServiceReactive.hash("POST", "/v1/inventory/release", req);
 
@@ -61,7 +63,7 @@ public class InventoryCommandResource {
 
   @POST @Path("/adjust")
   @WithTransaction
-  public Uni<Response> adjust(@HeaderParam("Idempotency-Key") String key, AdjustRequest req, Mutiny.Session session) {
+  public Uni<Response> adjust(@HeaderParam("Idempotency-Key") String key, AdjustRequest req) {
     ensureKey(key);
     String hash = IdempotencyServiceReactive.hash("POST", "/v1/inventory/adjust", req);
 
