@@ -1,19 +1,31 @@
 package com.meli.infrastructure.repository;
 
+import io.quarkus.hibernate.reactive.panache.PanacheEntityBase;
 import jakarta.persistence.*;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
-/**
- * Stores processed idempotency keys to avoid duplicate command execution.
- */
 @Entity
-@Table(name = "idempotency")
-public class IdempotencyKeyEntity {
-    @Id
-    private String id;
-    @Column(name = "created_at")
-    private LocalDateTime createdAt = LocalDateTime.now();
+@Table(name = "idempotency_keys")
+public class IdempotencyKeyEntity extends PanacheEntityBase {
 
-    public IdempotencyKeyEntity() {}
-    public IdempotencyKeyEntity(String id) { this.id = id; }
+  @Id
+  @Column(name = "id", nullable = false, updatable = false)
+  public String id; // Header: Idempotency-Key
+
+  @Column(name = "request_hash", nullable = false, updatable = false)
+  public String requestHash;
+
+  @Column(name = "status", nullable = false)
+  public String status; // PENDING | COMPLETED
+
+  public Integer httpStatus;
+
+  @Lob
+  public String responseJson;
+
+  @Column(nullable = false, updatable = false)
+  public Instant createdAt;
+
+  @Column(nullable = false)
+  public Instant expiresAt;
 }

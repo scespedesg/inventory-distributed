@@ -21,7 +21,7 @@ public class InventoryCommandResourceIT {
             .body("{\"skuId\":\"SKU123\",\"quantity\":1}")
         .when().post("/v1/inventory/reserve")
         .then()
-            .statusCode(200)
+            .statusCode(201)
             .body("reserved", equalTo(1));
     }
 }
