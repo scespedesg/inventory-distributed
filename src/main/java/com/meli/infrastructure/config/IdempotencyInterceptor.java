@@ -22,7 +22,7 @@ public class IdempotencyInterceptor {
     @ServerRequestFilter
     @Blocking
     @Transactional
-    void filter(ContainerRequestContext ctx) {
+    public void filter(ContainerRequestContext ctx) {
         if (!"POST".equals(ctx.getMethod())) {
             return;
         }
