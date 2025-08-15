@@ -1,6 +1,7 @@
 package com.meli.infrastructure.config;
 
 import com.meli.infrastructure.repository.IdempotencyKeyEntity;
+import io.smallrye.common.annotation.Blocking;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -26,6 +27,7 @@ public class IdempotencyInterceptor implements ContainerRequestFilter {
     EntityManager em;
 
     @Override
+    @Blocking
     @Transactional
     public void filter(ContainerRequestContext ctx) {
         if (!"POST".equals(ctx.getMethod())) {
