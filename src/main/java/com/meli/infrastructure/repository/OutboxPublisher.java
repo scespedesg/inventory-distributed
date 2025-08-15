@@ -4,8 +4,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
-import io.smallrye.faulttolerance.api.CircuitBreaker;
-import io.smallrye.faulttolerance.api.Retry;
+import org.eclipse.microprofile.faulttolerance.CircuitBreaker;
+import org.eclipse.microprofile.faulttolerance.Retry;
 import io.quarkus.scheduler.Scheduled;
 import java.util.List;
 
