@@ -20,10 +20,9 @@ public class ReleaseStockUC {
 
     public Uni<StockAggregate> release(SkuId skuId, long quantity) {
         return repository.find(skuId)
-                .onItem().transform(stock -> {
-                    stock.release(quantity);
-                    return stock;
-                })
-                .flatMap(repository::save);
+                .flatMap(stock -> {
+                    var event = stock.release(quantity);
+                    return repository.save(stock, event);
+                });
     }
 }

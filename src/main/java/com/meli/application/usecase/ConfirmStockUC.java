@@ -20,10 +20,9 @@ public class ConfirmStockUC {
 
     public Uni<StockAggregate> confirm(SkuId skuId, long quantity) {
         return repository.find(skuId)
-                .onItem().transform(stock -> {
-                    stock.confirm(quantity);
-                    return stock;
-                })
-                .flatMap(repository::save);
+                .flatMap(stock -> {
+                    var event = stock.confirm(quantity);
+                    return repository.save(stock, event);
+                });
     }
 }

@@ -7,6 +7,7 @@ import io.quarkus.hibernate.reactive.panache.Panache;
 import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.persistence.OptimisticLockException;
 import jakarta.ws.rs.core.Response;
 import lombok.RequiredArgsConstructor;
 
@@ -30,7 +31,13 @@ public class InventoryCommandService {
         return Panache.getSession().flatMap(session ->
             idem.execute(key, hash,
                 () -> reserveUC.reserve(new SkuId(req.skuId()), req.quantity())
-                               .map(this::toCreatedResponse),
+                               .map(this::toCreatedResponse)
+                               .onFailure(IllegalArgumentException.class)
+                               .recoverWithItem(t -> Response.status(422).entity(t.getMessage()).build())
+                               .onFailure(IllegalStateException.class)
+                               .recoverWithItem(t -> Response.status(422).entity(t.getMessage()).build())
+                               .onFailure(OptimisticLockException.class)
+                               .recoverWithItem(t -> Response.status(409).entity("Conflict, retry").build()),
                 session));
     }
 
