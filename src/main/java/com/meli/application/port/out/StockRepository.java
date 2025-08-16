@@ -1,4 +1,4 @@
-package com.meli.domain.repository;
+package com.meli.application.port.out;
 
 import com.meli.domain.model.*;
 import io.smallrye.mutiny.Uni;

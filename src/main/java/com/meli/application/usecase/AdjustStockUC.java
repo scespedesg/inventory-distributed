@@ -1,7 +1,7 @@
 package com.meli.application.usecase;
 
 import com.meli.domain.model.*;
-import com.meli.domain.repository.StockRepository;
+import com.meli.application.port.out.StockRepository;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;

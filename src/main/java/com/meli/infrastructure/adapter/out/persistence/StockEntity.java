@@ -1,4 +1,4 @@
-package com.meli.infrastructure.repository;
+package com.meli.infrastructure.adapter.out.persistence;
 
 import com.meli.domain.model.*;
 import jakarta.persistence.*;

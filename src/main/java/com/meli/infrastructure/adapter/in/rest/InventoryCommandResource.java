@@ -1,10 +1,10 @@
-package com.meli.infrastructure.rest.command;
+package com.meli.infrastructure.adapter.in.rest;
 
-import com.meli.application.service.InventoryCommandService;
-import com.meli.application.service.InventoryCommandService.AdjustRequest;
-import com.meli.application.service.InventoryCommandService.ConfirmRequest;
-import com.meli.application.service.InventoryCommandService.ReleaseRequest;
-import com.meli.application.service.InventoryCommandService.ReserveRequest;
+import com.meli.application.port.in.InventoryCommandUseCase;
+import com.meli.application.port.in.InventoryCommandUseCase.AdjustRequest;
+import com.meli.application.port.in.InventoryCommandUseCase.ConfirmRequest;
+import com.meli.application.port.in.InventoryCommandUseCase.ReleaseRequest;
+import com.meli.application.port.in.InventoryCommandUseCase.ReserveRequest;
 import io.smallrye.mutiny.Uni;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -17,7 +17,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class InventoryCommandResource {
 
-  private final InventoryCommandService service;
+  private final InventoryCommandUseCase service;
 
   @POST
   @Path("/reserve")

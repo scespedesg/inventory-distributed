@@ -1,5 +1,11 @@
 package com.meli.application.service;
 
+import com.meli.application.port.in.InventoryCommandUseCase;
+import com.meli.application.port.in.InventoryCommandUseCase.AdjustRequest;
+import com.meli.application.port.in.InventoryCommandUseCase.ConfirmRequest;
+import com.meli.application.port.in.InventoryCommandUseCase.ReleaseRequest;
+import com.meli.application.port.in.InventoryCommandUseCase.ReserveRequest;
+import com.meli.application.port.in.InventoryCommandUseCase.StockResponse;
 import com.meli.application.usecase.*;
 import com.meli.domain.model.SkuId;
 import com.meli.domain.model.StockAggregate;
@@ -18,7 +24,7 @@ import org.jboss.logging.Logger;
  */
 @ApplicationScoped
 @RequiredArgsConstructor
-public class InventoryCommandService {
+public class InventoryCommandService implements InventoryCommandUseCase {
 
     private final IdempotencyServiceReactive idem;
     private final ReserveStockUC reserveUC;
@@ -27,6 +33,7 @@ public class InventoryCommandService {
     private final AdjustStockUC  adjustUC;
     private static final Logger LOG = Logger.getLogger(InventoryCommandService.class);
 
+    @Override
     @WithTransaction
     public Uni<Response> reserve(String key, ReserveRequest req) {
         LOG.infov("Reserve request key={0} sku={1} qty={2}", key, req.skuId(), req.quantity());
@@ -46,6 +53,7 @@ public class InventoryCommandService {
             .onFailure().invoke(t -> LOG.errorf(t, "Reserve failed key=%s", key));
     }
 
+    @Override
     @WithTransaction
     public Uni<Response> confirm(String key, ConfirmRequest req) {
         LOG.infov("Confirm request key={0} sku={1} qty={2}", key, req.skuId(), req.quantity());
@@ -59,6 +67,7 @@ public class InventoryCommandService {
             .onFailure().invoke(t -> LOG.errorf(t, "Confirm failed key=%s", key));
     }
 
+    @Override
     @WithTransaction
     public Uni<Response> release(String key, ReleaseRequest req) {
         LOG.infov("Release request key={0} sku={1} qty={2}", key, req.skuId(), req.quantity());
@@ -72,6 +81,7 @@ public class InventoryCommandService {
             .onFailure().invoke(t -> LOG.errorf(t, "Release failed key=%s", key));
     }
 
+    @Override
     @WithTransaction
     public Uni<Response> adjust(String key, AdjustRequest req) {
         LOG.infov("Adjust request key={0} sku={1} delta={2}", key, req.skuId(), req.delta());
@@ -93,11 +103,6 @@ public class InventoryCommandService {
         return new StockResponse(agg.skuId().value(), agg.onHand(), agg.reserved());
     }
 
-    // DTOs
-    public record ReserveRequest(String skuId, long quantity) {}
-    public record ConfirmRequest(String skuId, long quantity) {}
-    public record ReleaseRequest(String skuId, long quantity) {}
-    public record AdjustRequest(String skuId, long delta) {}
-    public record StockResponse(String skuId, long onHand, long reserved) {}
+    // DTOs moved to input port
 }
 

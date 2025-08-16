@@ -1,4 +1,4 @@
-package com.meli.infrastructure.repository;
+package com.meli.infrastructure.adapter.out.persistence;
 
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
