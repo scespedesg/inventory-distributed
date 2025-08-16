@@ -6,6 +6,9 @@ import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
 import org.jboss.logging.Logger;
 
+import com.meli.application.service.ErrorResponse;
+import java.util.Map;
+
 /**
  * Logs unhandled exceptions before letting JAX-RS generate a response.
  */
@@ -22,7 +25,9 @@ public class AuditExceptionMapper implements ExceptionMapper<Throwable> {
         }
         LOG.error("Unhandled error", exception);
         return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                .entity("Internal Server Error")
+                .entity(new ErrorResponse("Internal Server Error", Map.of(
+                        "exception", exception.getClass().getSimpleName(),
+                        "message", exception.getMessage())))
                 .build();
     }
 }
