@@ -5,7 +5,6 @@ import com.meli.domain.repository.StockRepository;
 import io.quarkus.hibernate.reactive.panache.Panache;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
-import org.hibernate.reactive.mutiny.Mutiny;
 
 @ApplicationScoped
 public class ReactiveStockRepository implements StockRepository {

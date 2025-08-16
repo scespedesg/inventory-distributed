@@ -6,22 +6,18 @@ import com.meli.application.service.InventoryCommandService.ConfirmRequest;
 import com.meli.application.service.InventoryCommandService.ReleaseRequest;
 import com.meli.application.service.InventoryCommandService.ReserveRequest;
 import io.smallrye.mutiny.Uni;
-import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import lombok.RequiredArgsConstructor;
 
 @Path("/v1/inventory")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
+@RequiredArgsConstructor
 public class InventoryCommandResource {
 
   private final InventoryCommandService service;
-
-  @Inject
-  public InventoryCommandResource(InventoryCommandService service) {
-    this.service = service;
-  }
 
   @POST
   @Path("/reserve")
