@@ -3,7 +3,7 @@ package com.meli.application.service;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import com.meli.infrastructure.repository.IdempotencyKeyEntity;
+import com.meli.infrastructure.adapter.out.persistence.IdempotencyKeyEntity;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.WebApplicationException;

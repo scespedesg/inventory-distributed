@@ -2,7 +2,7 @@ package com.meli;
 
 import com.meli.application.usecase.ReserveStockUC;
 import com.meli.domain.model.*;
-import com.meli.domain.repository.StockRepository;
+import com.meli.application.port.out.StockRepository;
 import io.smallrye.mutiny.Uni;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

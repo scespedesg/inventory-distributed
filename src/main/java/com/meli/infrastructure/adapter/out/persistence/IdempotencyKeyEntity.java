@@ -1,4 +1,4 @@
-package com.meli.infrastructure.repository;
+package com.meli.infrastructure.adapter.out.persistence;
 
 import io.quarkus.hibernate.reactive.panache.PanacheEntityBase;
 import jakarta.persistence.*;

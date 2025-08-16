@@ -1,4 +1,4 @@
-package com.meli.infrastructure.logging;
+package com.meli.infrastructure.adapter.in.logging;
 
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
