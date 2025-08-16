@@ -8,5 +8,9 @@ import io.smallrye.mutiny.Uni;
  */
 public interface StockRepository {
     Uni<StockAggregate> find(SkuId skuId);
-    Uni<StockAggregate> save(StockAggregate aggregate);
+
+    /**
+     * Persists the aggregate and records the emitted domain event in the outbox.
+     */
+    Uni<StockAggregate> save(StockAggregate aggregate, Object event);
 }

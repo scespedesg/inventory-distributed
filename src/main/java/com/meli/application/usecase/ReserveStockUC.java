@@ -20,10 +20,9 @@ public class ReserveStockUC {
 
     public Uni<StockAggregate> reserve(SkuId skuId, long quantity) {
         return repository.find(skuId)
-                .onItem().transform(stock -> {
-                    stock.reserve(quantity);
-                    return stock;
-                })
-                .flatMap(repository::save);
+                .flatMap(stock -> {
+                    var event = stock.reserve(quantity);
+                    return repository.save(stock, event);
+                });
     }
 }

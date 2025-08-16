@@ -20,10 +20,9 @@ public class AdjustStockUC {
 
     public Uni<StockAggregate> adjust(SkuId skuId, long delta) {
         return repository.find(skuId)
-                .onItem().transform(stock -> {
-                    stock.adjust(delta);
-                    return stock;
-                })
-                .flatMap(repository::save);
+                .flatMap(stock -> {
+                    var event = stock.adjust(delta);
+                    return repository.save(stock, event);
+                });
     }
 }
