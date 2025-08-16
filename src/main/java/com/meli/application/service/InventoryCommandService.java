@@ -18,6 +18,8 @@ import jakarta.ws.rs.core.Response;
 import lombok.RequiredArgsConstructor;
 import org.jboss.logging.Logger;
 
+import java.util.Map;
+
 /**
  * Application service coordinating inventory commands with idempotency and transactions.
  * Encapsulates use case execution and response mapping keeping REST resource lean.
@@ -43,11 +45,23 @@ public class InventoryCommandService implements InventoryCommandUseCase {
                 () -> reserveUC.reserve(new SkuId(req.skuId()), req.quantity())
                                .map(this::toCreatedResponse)
                                .onFailure(IllegalArgumentException.class)
-                               .recoverWithItem(t -> Response.status(422).entity(t.getMessage()).build())
+                               .recoverWithItem(t -> Response.status(422).entity(
+                                       new ErrorResponse("Invalid request", Map.of(
+                                               "skuId", req.skuId(),
+                                               "quantity", req.quantity(),
+                                               "reason", t.getMessage()))).build())
                                .onFailure(IllegalStateException.class)
-                               .recoverWithItem(t -> Response.status(422).entity(t.getMessage()).build())
+                               .recoverWithItem(t -> Response.status(422).entity(
+                                       new ErrorResponse("Reserve failed", Map.of(
+                                               "skuId", req.skuId(),
+                                               "quantity", req.quantity(),
+                                               "reason", t.getMessage()))).build())
                                .onFailure(OptimisticLockException.class)
-                               .recoverWithItem(t -> Response.status(409).entity("Conflict, retry").build()),
+                               .recoverWithItem(t -> Response.status(409).entity(
+                                       new ErrorResponse("Conflict", Map.of(
+                                               "skuId", req.skuId(),
+                                               "quantity", req.quantity(),
+                                               "reason", "Concurrent update, retry"))).build()),
                 session))
             .invoke(resp -> LOG.infov("Reserve response key={0} status={1}", key, resp.getStatus()))
             .onFailure().invoke(t -> LOG.errorf(t, "Reserve failed key=%s", key));
@@ -61,7 +75,25 @@ public class InventoryCommandService implements InventoryCommandUseCase {
         return Panache.getSession().flatMap(session ->
             idem.execute(key, hash,
                 () -> confirmUC.confirm(new SkuId(req.skuId()), req.quantity())
-                                .replaceWith(Response.noContent().build()),
+                                .replaceWith(Response.noContent().build())
+                                .onFailure(IllegalArgumentException.class)
+                                .recoverWithItem(t -> Response.status(422).entity(
+                                        new ErrorResponse("Invalid request", Map.of(
+                                                "skuId", req.skuId(),
+                                                "quantity", req.quantity(),
+                                                "reason", t.getMessage()))).build())
+                                .onFailure(IllegalStateException.class)
+                                .recoverWithItem(t -> Response.status(422).entity(
+                                        new ErrorResponse("Confirm failed", Map.of(
+                                                "skuId", req.skuId(),
+                                                "quantity", req.quantity(),
+                                                "reason", t.getMessage()))).build())
+                                .onFailure(OptimisticLockException.class)
+                                .recoverWithItem(t -> Response.status(409).entity(
+                                        new ErrorResponse("Conflict", Map.of(
+                                                "skuId", req.skuId(),
+                                                "quantity", req.quantity(),
+                                                "reason", "Concurrent update, retry"))).build()),
                 session))
             .invoke(resp -> LOG.infov("Confirm response key={0} status={1}", key, resp.getStatus()))
             .onFailure().invoke(t -> LOG.errorf(t, "Confirm failed key=%s", key));
@@ -75,7 +107,25 @@ public class InventoryCommandService implements InventoryCommandUseCase {
         return Panache.getSession().flatMap(session ->
             idem.execute(key, hash,
                 () -> releaseUC.release(new SkuId(req.skuId()), req.quantity())
-                                .replaceWith(Response.noContent().build()),
+                                .replaceWith(Response.noContent().build())
+                                .onFailure(IllegalArgumentException.class)
+                                .recoverWithItem(t -> Response.status(422).entity(
+                                        new ErrorResponse("Invalid request", Map.of(
+                                                "skuId", req.skuId(),
+                                                "quantity", req.quantity(),
+                                                "reason", t.getMessage()))).build())
+                                .onFailure(IllegalStateException.class)
+                                .recoverWithItem(t -> Response.status(422).entity(
+                                        new ErrorResponse("Release failed", Map.of(
+                                                "skuId", req.skuId(),
+                                                "quantity", req.quantity(),
+                                                "reason", t.getMessage()))).build())
+                                .onFailure(OptimisticLockException.class)
+                                .recoverWithItem(t -> Response.status(409).entity(
+                                        new ErrorResponse("Conflict", Map.of(
+                                                "skuId", req.skuId(),
+                                                "quantity", req.quantity(),
+                                                "reason", "Concurrent update, retry"))).build()),
                 session))
             .invoke(resp -> LOG.infov("Release response key={0} status={1}", key, resp.getStatus()))
             .onFailure().invoke(t -> LOG.errorf(t, "Release failed key=%s", key));
@@ -89,7 +139,19 @@ public class InventoryCommandService implements InventoryCommandUseCase {
         return Panache.getSession().flatMap(session ->
             idem.execute(key, hash,
                 () -> adjustUC.adjust(new SkuId(req.skuId()), req.delta())
-                                .map(agg -> Response.ok(toResponse(agg)).build()),
+                                .map(agg -> Response.ok(toResponse(agg)).build())
+                                .onFailure(IllegalStateException.class)
+                                .recoverWithItem(t -> Response.status(422).entity(
+                                        new ErrorResponse("Adjust failed", Map.of(
+                                                "skuId", req.skuId(),
+                                                "delta", req.delta(),
+                                                "reason", t.getMessage()))).build())
+                                .onFailure(OptimisticLockException.class)
+                                .recoverWithItem(t -> Response.status(409).entity(
+                                        new ErrorResponse("Conflict", Map.of(
+                                                "skuId", req.skuId(),
+                                                "delta", req.delta(),
+                                                "reason", "Concurrent update, retry"))).build()),
                 session))
             .invoke(resp -> LOG.infov("Adjust response key={0} status={1}", key, resp.getStatus()))
             .onFailure().invoke(t -> LOG.errorf(t, "Adjust failed key=%s", key));
