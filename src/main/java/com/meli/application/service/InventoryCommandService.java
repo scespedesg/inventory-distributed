@@ -7,21 +7,22 @@ import io.quarkus.hibernate.reactive.panache.Panache;
 import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
+import lombok.RequiredArgsConstructor;
 
 /**
  * Application service coordinating inventory commands with idempotency and transactions.
  * Encapsulates use case execution and response mapping keeping REST resource lean.
  */
 @ApplicationScoped
+@RequiredArgsConstructor
 public class InventoryCommandService {
 
-    @Inject IdempotencyServiceReactive idem;
-    @Inject ReserveStockUC reserveUC;
-    @Inject ConfirmStockUC confirmUC;
-    @Inject ReleaseStockUC releaseUC;
-    @Inject AdjustStockUC  adjustUC;
+    private final IdempotencyServiceReactive idem;
+    private final ReserveStockUC reserveUC;
+    private final ConfirmStockUC confirmUC;
+    private final ReleaseStockUC releaseUC;
+    private final AdjustStockUC  adjustUC;
 
     @WithTransaction
     public Uni<Response> reserve(String key, ReserveRequest req) {
