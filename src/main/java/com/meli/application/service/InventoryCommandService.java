@@ -10,6 +10,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.OptimisticLockException;
 import jakarta.ws.rs.core.Response;
 import lombok.RequiredArgsConstructor;
+import org.jboss.logging.Logger;
 
 /**
  * Application service coordinating inventory commands with idempotency and transactions.
@@ -24,9 +25,11 @@ public class InventoryCommandService {
     private final ConfirmStockUC confirmUC;
     private final ReleaseStockUC releaseUC;
     private final AdjustStockUC  adjustUC;
+    private static final Logger LOG = Logger.getLogger(InventoryCommandService.class);
 
     @WithTransaction
     public Uni<Response> reserve(String key, ReserveRequest req) {
+        LOG.infov("Reserve request key={0} sku={1} qty={2}", key, req.skuId(), req.quantity());
         String hash = IdempotencyServiceReactive.hash("POST", "/v1/inventory/reserve", req);
         return Panache.getSession().flatMap(session ->
             idem.execute(key, hash,
@@ -38,37 +41,48 @@ public class InventoryCommandService {
                                .recoverWithItem(t -> Response.status(422).entity(t.getMessage()).build())
                                .onFailure(OptimisticLockException.class)
                                .recoverWithItem(t -> Response.status(409).entity("Conflict, retry").build()),
-                session));
+                session))
+            .invoke(resp -> LOG.infov("Reserve response key={0} status={1}", key, resp.getStatus()))
+            .onFailure().invoke(t -> LOG.errorf(t, "Reserve failed key=%s", key));
     }
 
     @WithTransaction
     public Uni<Response> confirm(String key, ConfirmRequest req) {
+        LOG.infov("Confirm request key={0} sku={1} qty={2}", key, req.skuId(), req.quantity());
         String hash = IdempotencyServiceReactive.hash("POST", "/v1/inventory/confirm", req);
         return Panache.getSession().flatMap(session ->
             idem.execute(key, hash,
                 () -> confirmUC.confirm(new SkuId(req.skuId()), req.quantity())
                                 .replaceWith(Response.noContent().build()),
-                session));
+                session))
+            .invoke(resp -> LOG.infov("Confirm response key={0} status={1}", key, resp.getStatus()))
+            .onFailure().invoke(t -> LOG.errorf(t, "Confirm failed key=%s", key));
     }
 
     @WithTransaction
     public Uni<Response> release(String key, ReleaseRequest req) {
+        LOG.infov("Release request key={0} sku={1} qty={2}", key, req.skuId(), req.quantity());
         String hash = IdempotencyServiceReactive.hash("POST", "/v1/inventory/release", req);
         return Panache.getSession().flatMap(session ->
             idem.execute(key, hash,
                 () -> releaseUC.release(new SkuId(req.skuId()), req.quantity())
                                 .replaceWith(Response.noContent().build()),
-                session));
+                session))
+            .invoke(resp -> LOG.infov("Release response key={0} status={1}", key, resp.getStatus()))
+            .onFailure().invoke(t -> LOG.errorf(t, "Release failed key=%s", key));
     }
 
     @WithTransaction
     public Uni<Response> adjust(String key, AdjustRequest req) {
+        LOG.infov("Adjust request key={0} sku={1} delta={2}", key, req.skuId(), req.delta());
         String hash = IdempotencyServiceReactive.hash("POST", "/v1/inventory/adjust", req);
         return Panache.getSession().flatMap(session ->
             idem.execute(key, hash,
                 () -> adjustUC.adjust(new SkuId(req.skuId()), req.delta())
                                 .map(agg -> Response.ok(toResponse(agg)).build()),
-                session));
+                session))
+            .invoke(resp -> LOG.infov("Adjust response key={0} status={1}", key, resp.getStatus()))
+            .onFailure().invoke(t -> LOG.errorf(t, "Adjust failed key=%s", key));
     }
 
     private Response toCreatedResponse(StockAggregate agg) {
