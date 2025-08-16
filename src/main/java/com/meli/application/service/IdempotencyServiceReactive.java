@@ -59,6 +59,7 @@ public class IdempotencyServiceReactive {
           )
           .onFailure().recoverWithUni(t ->
             session.find(IdempotencyKeyEntity.class, key)
+              .onItem().ifNull().failWith(t)
               .onItem().ifNotNull().transform(respRec -> {
                 if (!respRec.requestHash.equals(requestHash))
                   throw new WebApplicationException("Idempotency-Key reused with different payload", 409);

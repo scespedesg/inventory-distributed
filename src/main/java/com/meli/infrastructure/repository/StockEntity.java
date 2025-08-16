@@ -28,6 +28,15 @@ public class StockEntity {
         return e;
     }
 
+    public static StockEntity newEmpty(String skuId) {
+        StockEntity e = new StockEntity();
+        e.skuId = skuId;
+        e.onHand = 0;
+        e.reserved = 0;
+        e.version = 0;
+        return e;
+    }
+
     public StockAggregate toAggregate() {
         return new StockAggregate(new SkuId(skuId), onHand, reserved, version);
     }
