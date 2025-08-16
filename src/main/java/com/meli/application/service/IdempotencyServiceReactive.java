@@ -23,6 +23,10 @@ public class IdempotencyServiceReactive {
       .configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true)
       .setSerializationInclusion(JsonInclude.Include.NON_NULL);
 
+  private static final String STATUS_COMPLETED = "COMPLETED";
+  private static final String STATUS_PENDING = "PENDING";
+  private static final String PROCESSING = "Processing";
+
   /**
    * Ejecuta la acción dentro de la misma sesión/tx reactiva del recurso (@WithTransaction).
    * - Si la key no existe: inserta PENDING, ejecuta acción, guarda respuesta, marca COMPLETED.
@@ -32,42 +36,48 @@ public class IdempotencyServiceReactive {
    */
   public Uni<Response> execute(String key, String requestHash, Supplier<Uni<Response>> action, Mutiny.Session session) {
     return session.find(IdempotencyKeyEntity.class, key)
-      .onItem().transformToUni(existing -> {
-        if (existing != null) {
-          if (!existing.requestHash.equals(requestHash))
-            return Uni.createFrom().failure(new WebApplicationException("Idempotency-Key reused with different payload", 409));
-          if ("COMPLETED".equals(existing.status))
-            return Uni.createFrom().item(rebuild(existing));
-          return Uni.createFrom().item(Response.status(202).entity("Processing").build());
-        }
+        .onItem()
+        .transformToUni(existing -> existing != null
+            ? handleExisting(existing, requestHash)
+            : insertPendingAndExecute(key, requestHash, action, session));
+  }
 
-        // Insert PENDING (la PK maneja carreras)
-        var rec = new IdempotencyKeyEntity();
-        rec.id = key;
-        rec.requestHash = requestHash;
-        rec.status = "PENDING";
-        rec.createdAt = Instant.now();
-        rec.expiresAt = rec.createdAt.plus(Duration.ofHours(48));
+  private Uni<Response> handleExisting(IdempotencyKeyEntity existing, String requestHash) {
+    if (!existing.requestHash.equals(requestHash)) {
+      return Uni.createFrom().failure(new WebApplicationException("Idempotency-Key reused with different payload", 409));
+    }
+    if (STATUS_COMPLETED.equals(existing.status)) {
+      return Uni.createFrom().item(rebuild(existing));
+    }
+    return Uni.createFrom().item(Response.status(202).entity(PROCESSING).build());
+  }
 
-        return session.persist(rec)
-          .chain(() -> action.get()
+  private Uni<Response> insertPendingAndExecute(String key, String requestHash, Supplier<Uni<Response>> action, Mutiny.Session session) {
+    var rec = new IdempotencyKeyEntity();
+    rec.id = key;
+    rec.requestHash = requestHash;
+    rec.status = STATUS_PENDING;
+    rec.createdAt = Instant.now();
+    rec.expiresAt = rec.createdAt.plus(Duration.ofHours(48));
+
+    return session.persist(rec)
+        .chain(() -> action.get()
             .onItem().invoke(resp -> {
               rec.httpStatus = resp.getStatus();
               rec.responseJson = toJson(resp.getEntity());
-              rec.status = "COMPLETED"; // dirty tracking
-            })
-          )
-          .onFailure().recoverWithUni(t ->
-            session.find(IdempotencyKeyEntity.class, key)
-              .onItem().ifNull().failWith(t)
-              .onItem().ifNotNull().transform(respRec -> {
-                if (!respRec.requestHash.equals(requestHash))
-                  throw new WebApplicationException("Idempotency-Key reused with different payload", 409);
-                if ("COMPLETED".equals(respRec.status)) return rebuild(respRec);
-                return Response.status(202).entity("Processing").build();
-              })
-          );
-      });
+              rec.status = STATUS_COMPLETED; // dirty tracking
+            }))
+        .onFailure().recoverWithUni(t -> session.find(IdempotencyKeyEntity.class, key)
+            .onItem().ifNull().failWith(t)
+            .onItem().ifNotNull().transform(respRec -> {
+              if (!respRec.requestHash.equals(requestHash)) {
+                throw new WebApplicationException("Idempotency-Key reused with different payload", 409);
+              }
+              if (STATUS_COMPLETED.equals(respRec.status)) {
+                return rebuild(respRec);
+              }
+              return Response.status(202).entity(PROCESSING).build();
+            }));
   }
 
   public static String hash(String method, String path, Object body) {
@@ -79,18 +89,25 @@ public class IdempotencyServiceReactive {
       var sb = new StringBuilder();
       for (byte b : out) sb.append(String.format("%02x", b));
       return sb.toString();
-    } catch (Exception e) { throw new RuntimeException(e); }
+    } catch (Exception e) {
+      throw new IdempotencyServiceException("Error generating idempotency hash", e);
+    }
   }
 
   private static String toJson(Object o) {
-    try { return o==null ? null : M.writeValueAsString(o); }
-    catch (Exception e) { throw new RuntimeException(e); }
+    try {
+      return o == null ? null : M.writeValueAsString(o);
+    } catch (Exception e) {
+      throw new IdempotencyServiceException("Error serializing response", e);
+    }
   }
 
   private static Response rebuild(IdempotencyKeyEntity r) {
     try {
       var node = (r.responseJson == null) ? null : M.readTree(r.responseJson);
       return Response.status(r.httpStatus).entity(node).build();
-    } catch (Exception e) { throw new RuntimeException(e); }
+    } catch (Exception e) {
+      throw new IdempotencyServiceException("Error rebuilding response", e);
+    }
   }
 }
